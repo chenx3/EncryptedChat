@@ -3,6 +3,8 @@ import base64
 from time import sleep
 from threading import Thread
 
+
+
 class Conversation:
     '''
     Represents a conversation between participants
@@ -14,6 +16,8 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
+        self.role = "responder"
+        self.state = "key_exchange_not_done"
         self.id = c_id  # ID of the conversation
         self.all_messages = []  # all retrieved messages of the conversation
         self.printed_messages = []
