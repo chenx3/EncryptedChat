@@ -1,7 +1,8 @@
+from encrypted_conversation import EncryptedConversation
 from config import *
 import urllib2
 import json
-from encrypted_conversation import EncryptedConversation
+from conversation import Conversation
 from message import Message, MessageEncoder
 from time import sleep
 
@@ -11,7 +12,6 @@ from threading import Thread
 
 import base64
 
-
 state = INIT  # initial state for the application
 has_requested_messages = False  # history of the next conversation will need to be downloaded and printed
 
@@ -20,6 +20,7 @@ class ChatManager:
     '''
     Class responsible for driving the application
     '''
+
     def __init__(self, user_name="", password=""):
         '''
         Constructor
@@ -205,7 +206,34 @@ class ChatManager:
                 for m in msgs:
                     self.current_conversation.append_msg_to_process(m)
                 has_requested_messages = True
-            sleep(MSG_QUERY_INTERVAL) # Query for new messages every X seconds
+            sleep(MSG_QUERY_INTERVAL)  # Query for new messages every X seconds
+
+    def get_active_user_for_current_conversation(self):
+        # If we are in a conversation, download messages that have not been seen in the current conv.
+        req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversation_active_user/" +
+                              str(self.current_conversation.get_id()))
+        # Include cooke
+        req.add_header("Cookie", self.cookie)
+        r = urllib2.urlopen(req)
+        active_participants = json.loads(r.read())
+        return active_participants
+
+    def post_key_exchange_message(self, msg_raw):
+        try:
+            # Process outgoing message
+            msg = Message(content=base64.encodestring(msg_raw),
+                          owner_name=self.user_name)
+            # Send the message
+            req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversations/" +
+                                  str(self.current_conversation.get_id()),
+                                  data=json.dumps(msg, cls=MessageEncoder))
+            # Include cookie
+            req.add_header("Cookie", self.cookie)
+            r = urllib2.urlopen(req)
+        except urllib2.HTTPError as e:
+            print "Unable to post message, server returned HTTP", e.code, e.msg
+        except urllib2.URLError as e:
+            print "Unable to post message, reason: ", e.message
 
     def post_message_to_conversation(self, msg_raw):
         '''
@@ -293,7 +321,6 @@ class ChatManager:
                         req.add_header("Cookie", self.cookie)
                         r = urllib2.urlopen(req)
                         self.current_conversation = EncryptedConversation(conversation_id, self)
-                        self.current_conversation.role = "initiator"
                         self.current_conversation.setup_conversation()
                     except urllib2.HTTPError as e:
                         print "Unable to determine validity of conversation ID, server returned HTTP", e.code, e.msg

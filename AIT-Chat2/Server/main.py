@@ -177,8 +177,23 @@ class ConversationCreateHandler(JsonHandler):
         self.finish()
 
 
-class ConcreteConversationHandler(JsonHandler):
+class ConversationUserHandler(JsonHandler):
+    def data_received(self, chunk):
+        pass
 
+    def get(self, conversation_id):
+        conversation = cm.get_conversation(conversation_id)
+        if not conversation:
+            print "Conversation not found"
+            self.send_error(500)
+            return
+        answer = conversation.get_active_users()
+        # send JSON reply
+        self.response = answer
+        self.write_json()
+
+
+class ConcreteConversationHandler(JsonHandler):
     def data_received(self, chunk):
         pass
 
@@ -204,7 +219,7 @@ class ConcreteConversationHandler(JsonHandler):
             print "Conversation not found"
             self.send_error(500)
             return
-
+        conversation.add_active_user(user_name)
         messages = conversation.get_messages_since(last_message_id)
 
         # Transforming the messages list for the chat client
@@ -267,6 +282,7 @@ def init_app():
         (r"/login", LoginHandler),
         (r"/users", UsersHandler),
         (r"/conversations", ConversationHandler),
+        (r"/conversation_active_user/([0-9]+)", ConversationUserHandler),
         (r"/conversations/create", ConversationCreateHandler),
         (r"/conversations/([0-9]+)", ConcreteConversationHandler),
         (r"/conversations/([0-9]+)/([0-9]+)?", ConcreteConversationHandler)

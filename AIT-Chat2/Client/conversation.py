@@ -2,8 +2,7 @@ from message import Message
 import base64
 from time import sleep
 from threading import Thread
-
-
+from config import *
 
 class Conversation:
     '''
@@ -16,8 +15,8 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
-        self.role = "responder"
-        self.state = "key_exchange_not_done"
+        self.key_exchange_state = KEY_EXCHANGE_NOT_DONE
+        self.group_key = -1
         self.id = c_id  # ID of the conversation
         self.all_messages = []  # all retrieved messages of the conversation
         self.printed_messages = []

@@ -8,6 +8,11 @@ class Conversation:
         self.participants = participants  # list of Users
         self.conversation_id = random.randint(1, 10000)
         self.messages = []  # list of Messages
+        self.active_participants = []
+
+    def add_active_user(self, user_name):
+        if user_name not in self.active_participants:
+            self.active_participants.append(user_name)
 
     def add_user(self, user):
         """
@@ -15,6 +20,10 @@ class Conversation:
         :param user: the new user to be added to the conversation
         """
         self.participants.append(user)
+
+
+    def get_active_users(self):
+        return self.active_participants
 
     def get_messages_since(self, last_message_id):
         """
