@@ -15,6 +15,7 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
+        self.users_public_key = {}
         self.key_exchange_state = KEY_EXCHANGE_NOT_DONE
         self.group_key = -1
         self.id = c_id  # ID of the conversation

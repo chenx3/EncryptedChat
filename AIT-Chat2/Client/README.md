@@ -33,3 +33,11 @@ Basically, You have two options for implementing cryptographic protection of cha
 In case of extending the Conversation class, You can add extra code to the setup_conversation(), process_incoming_message() and process_outgoing_message() methods. You can call setup_conversation() when the conversation is created to initiat any key exchange protocol that you want to implement. And you can use process_incoming_message() and  process_outgoing_message() to add whatever cryptographic processing you need on incoming and outgoing messages. You will probably need to keep track of the state of your protocol, as different processing is needed when you are executing your key exchange and you are processing key exchange messages and when you already have a key and you are actually processing chat messages. 
 
 In case of inheriting from the Conversation class, You will need to override only the above methods. In addition, You must modify chat_manager.py at line 295 and instantiate Your new inherited class.
+
+d:
+cd AIT-Chat2\Client
+python main.py user_elon.json user_elon.pem
+
+d:
+cd AIT-Chat2\Client
+python main.py user_steve.json user_steve.pem

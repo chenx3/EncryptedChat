@@ -1,4 +1,5 @@
 {
     "user_name" : "Bill",
-    "password"  : "Gates"
+    "password"  : "Gates",
+    "private_key":"MIICXgIBAAKBgQDjDKZMiKOD5ctEAzuH1stBzZPTc6wNa44vFaJtJFXZg5vwN+mtcZbb44azyu+H/46OKZdHVlDC99/+Q7XNOdeg5cZF1yFRDSAcTzuuW79Or4VbbKOEqUh50XKGfWMlg40t0V4AKk0VF7eNljt6cjNIvSM4o5rqtpXT0nYIHRsv8wIDAQABAoGBAJC2oEwJjwbjcSIBWXEkI1rml8DfahsHoZE7HdKopRtFOh/q00LcMkYmh9WSlAc/iHHt6mDqkAEkkhzytS6AHoFYJcB7o7MYI/nRLxCX+GQ4X6jj3yCZYugyyPRJfvhKVl/oUQ+20rFKlsD1aPgURFTpAHd9SECBOXZ1MVrHeK+RAkEA/Mg8rY8+Lq8l5aC2N7hZQmpQak9yctt7v1g31kLTGHe2y+OJrTNsdTMwaWT397sqvDB5KnuHCxkXKgCE2UyUywJBAOXwjhWYoHqDXGxIx39U+z5kzk0wlug1ceRTsHtV4BxjSowy2W4sqblYk9d8D1zJHlhJDgT+CduPhF/lnLS7FHkCQQChQti63GQOAjyJ9nHosBl5bjto5tAbh/u1AQF2FeF3fX/HKJx/OwwY5JQg2IH8r5G+xqm1uWJYaSRG7lfSDLHrAkEAgkwDJ6e6YFIpwE6phbURPfT/lmwPR3xpknn+CpXKDiwRpUp3PWBfuODBvhzV070/zcVwBVIzIdC8sV66owtT+QJAD851daibgJbwcJVcshSqyktzArngKe6mrwBQI/4P5x+D6aiMyec40iw7ihCL5xp+tneD1LGg7e3wscgXY5M7zA=="
 }

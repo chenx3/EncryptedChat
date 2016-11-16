@@ -28,6 +28,7 @@ class ChatManager:
         :param password: password of the current user
         :return: instance
         '''
+        self.private_key = ""
         self.cookie = ""  # cookie, the result of successful login, has to be included in all requests to the server
         self.is_logged_in = False  # flag, was the login process successful?
         self.current_conversation = None  # object representing the current selected conversation
@@ -38,6 +39,9 @@ class ChatManager:
         self.user_name = user_name  # user name of the current user
         self.password = password  # password of the current user
         self.get_msgs_thread_started = False  # message retrieval has not been started
+
+    def set_private_key(self, private_key):
+        self.private_key = private_key
 
     def login_user(self):
         '''

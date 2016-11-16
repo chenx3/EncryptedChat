@@ -1,11 +1,20 @@
+import json
+import base64
+
 class EncryptedMessage:
     @staticmethod
-    def format_message(content="", purpose="0"):
-        return content + purpose
+    def format_message(content="", purpose="0", receiver="",signature=""):
+        dic = {}
+        dic["content"] = base64.encodestring(content)
+        dic["purpose"] = purpose
+        dic["receiver"] = receiver
+        dic["signature"] = signature
+        return json.dumps(dic)
 
     @staticmethod
     def decode_message(message):
-        dic = {"content": message[:len(message) - 1], "purpose": message[-1]}
-        print("content: "+ dic["content"])
-        print("purpose: " + dic["purpose"])
-        return dic
+        decodejson = json.loads(message)
+        decodejson["content"] = base64.decodestring(decodejson["content"])
+        decodejson["signature"] = decodejson["signature"]
+        return decodejson
+

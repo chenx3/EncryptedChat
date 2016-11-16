@@ -1,5 +1,8 @@
 import random
 import base64
+
+from Crypto.PublicKey import RSA
+
 from Message import Message
 
 
@@ -21,9 +24,18 @@ class Conversation:
         """
         self.participants.append(user)
 
-
-    def get_active_users(self):
+    def get_active_users_info(self):
         return self.active_participants
+
+    def get_users_info(self):
+        user_info = {}
+        for user in self.participants:
+            kfile = open(user.lower() + '-pubkey.pem')
+            keystr = kfile.read()
+            kfile.close()
+            key = RSA.importKey(keystr)
+            user_info[user] = key.exportKey('PEM')
+        return user_info
 
     def get_messages_since(self, last_message_id):
         """

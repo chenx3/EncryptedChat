@@ -187,9 +187,12 @@ class ConversationUserHandler(JsonHandler):
             print "Conversation not found"
             self.send_error(500)
             return
-        answer = conversation.get_active_users()
+        active_user_list = conversation.get_active_users_info()
+        participants_info = conversation.get_users_info()
+        print(active_user_list)
+        print(participants_info)
         # send JSON reply
-        self.response = answer
+        self.response = {"user_list":active_user_list, "user_info": participants_info}
         self.write_json()
 
 

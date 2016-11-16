@@ -8,11 +8,12 @@ import sys
 import os.path
 # loading user credentials from json files
 import json
+from Crypto.PublicKey import RSA
 
 
 def main():
     # Check the existence of the user credential configuration file
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print "Specify configuration file from which user credentials are to be read!"
         return
     if os.path.exists(sys.argv[1]) == False:
@@ -33,6 +34,11 @@ def main():
         # In case the JSON file is malformed
         print "Unable to get user credentials from JSON file"
         return
+
+    # Load credentials
+    private_key = RSA.importKey(open(sys.argv[2]).read())
+    c.set_private_key(private_key)
+
     # Register function of menu handling to specific signals from the OS
     try:
         signal.signal(signal.SIGBREAK, c.enter_menu) # for Windows: CRTL+BREAK
