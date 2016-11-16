@@ -15,6 +15,5 @@ class EncryptedMessage:
     def decode_message(message):
         decodejson = json.loads(message)
         decodejson["content"] = base64.decodestring(decodejson["content"])
-        decodejson["signature"] = decodejson["signature"]
         return decodejson
 

@@ -81,15 +81,20 @@ class EncryptedConversation(Conversation):
                 self.group_key = cipher.decrypt(message["content"])
                 print "Receive group key: " + self.group_key
                 self.key_exchange_state = KEY_EXCHANGE_DONE
+                # process all the message stored in the history
+                for i in self.message_history:
+                    self.process_incoming_message(i[0],i[1],i[2])
             else:
                 # post another message to request the key
                 encoded_msg = base64.encodestring(
                     EncryptedMessage.format_message("", REQUEST_KEY, self.manager.get_active_user_for_current_conversation()["user_list"][0]))
                 self.manager.post_key_exchange_message(encoded_msg)
-
-        elif message["purpose"] == MESSAGE and owner_str != self.manager.user_name:
+        # if key exchange is not done, save the message to history
+        elif message["purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
+            self.message_history.append([msg_raw,msg_id,owner_str])
+        # process the mesasge if key exchange is done
+        elif message["purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
             # print message and add it to the list of printed messages
-            print(message["content"])
             self.print_message(
                 msg_raw=message["content"],
                 owner_str=owner_str

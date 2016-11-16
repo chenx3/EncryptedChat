@@ -15,6 +15,8 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
+        self.message_history_printed =False
+        self.message_history = []
         self.users_public_key = {}
         self.key_exchange_state = KEY_EXCHANGE_NOT_DONE
         self.group_key = -1
@@ -31,6 +33,9 @@ class Conversation:
         ) # message processing loop
         self.msg_process_loop.start()
         self.msg_process_loop_started = True
+
+    def get_key_exchange_state(self):
+        return self.key_exchange_state
 
     def append_msg_to_process(self, msg_json):
         '''
