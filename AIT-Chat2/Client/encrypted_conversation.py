@@ -4,8 +4,11 @@ from Crypto.Cipher import AES
 from Crypto import Random
 from encrypted_message import EncryptedMessage
 from base64 import b64encode
-from Crypto.Hash import SHA256
+from base64 import b64decode
 
+from Crypto.Hash import SHA256
+from Crypto.Signature import PKCS1_PSS
+from Crypto.Hash import SHA
 from conversation import Conversation
 from config import *
 from Crypto.Cipher import PKCS1_OAEP
@@ -60,8 +63,10 @@ class EncryptedConversation(Conversation):
             cipher = PKCS1_OAEP.new(pubkey)
             encrypted_group_key = cipher.encrypt(self.group_key)
             # compute the digital signature
-            hash_value = SHA256.new(encrypted_group_key).digest()
-            signature = self.manager.private_key.sign(hash_value, '')
+            h = SHA.new()
+            h.update(encrypted_group_key)
+            signer = PKCS1_PSS.new(self.manager.private_key)
+            signature = b64encode(signer.sign(h))
             # send the message to the owner
             encoded_msg = base64.encodestring(EncryptedMessage.format_message(encrypted_group_key, SEND_KEY, owner_str,signature))
             self.manager.post_key_exchange_message(encoded_msg)
@@ -69,15 +74,17 @@ class EncryptedConversation(Conversation):
         # handle message containing group key
         elif message["purpose"] == SEND_KEY and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE and message["receiver"] == self.manager.user_name:
             # check the digital signature
-            hash_value = SHA256.new(message["content"]).digest()
             pubkey = RSA.importKey(self.users_public_key[owner_str])
-            signature_valid = pubkey.verify(hash_value, message["signature"])
-            if signature_valid:
+            h = SHA.new()
+            h.update(message["content"])
+            verifier = PKCS1_PSS.new(pubkey)
+            if verifier.verify(h, b64decode(message["signature"])):
                 cipher = PKCS1_OAEP.new(self.manager.private_key)
                 self.group_key = cipher.decrypt(message["content"])
                 print "Receive group key: " + self.group_key
                 self.key_exchange_state = KEY_EXCHANGE_DONE
             else:
+                print "Unsuccessful"
                 # post another message to request the key
                 encoded_msg = base64.encodestring(
                     EncryptedMessage.format_message("", REQUEST_KEY, self.manager.get_active_user_for_current_conversation()["user_list"][0]))
