@@ -5,8 +5,6 @@ from Crypto import Random
 from encrypted_message import EncryptedMessage
 from base64 import b64encode
 from base64 import b64decode
-
-from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_PSS
 from Crypto.Hash import SHA
 from conversation import Conversation
@@ -84,16 +82,16 @@ class EncryptedConversation(Conversation):
                 print "Receive group key: " + self.group_key
                 self.key_exchange_state = KEY_EXCHANGE_DONE
             else:
-                print "Unsuccessful"
                 # post another message to request the key
                 encoded_msg = base64.encodestring(
                     EncryptedMessage.format_message("", REQUEST_KEY, self.manager.get_active_user_for_current_conversation()["user_list"][0]))
                 self.manager.post_key_exchange_message(encoded_msg)
 
-        elif message["purpose"] == MESSAGE:
+        elif message["purpose"] == MESSAGE and owner_str != self.manager.user_name:
             # print message and add it to the list of printed messages
+            print(message["content"])
             self.print_message(
-                msg_raw=decoded_msg["content"],
+                msg_raw=message["content"],
                 owner_str=owner_str
             )
 
@@ -108,14 +106,13 @@ class EncryptedConversation(Conversation):
         # ignore other situations
 
         # example is base64 encoding, extend this with any crypto processing of your protocol
-        decoded_msg = base64.encodestring(msg_raw)
-        message = EncryptedMessage.format_message(decoded_msg, MESSAGE)
-
+        message = EncryptedMessage.format_message(msg_raw, MESSAGE)
+        message = base64.encodestring(message)
         if originates_from_console == True or message["purpose"] == SEND_KEY or message["purpose"] == REQUEST_KEY:
             # message is already seen on the console
             m = Message(
                 owner_name=self.manager.user_name,
-                content=msg_raw
+                content=message
             )
             self.printed_messages.append(m)
 
