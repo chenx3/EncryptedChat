@@ -61,57 +61,76 @@ class EncryptedConversation(Conversation):
             cipher = PKCS1_OAEP.new(pubkey)
             encrypted_group_key = cipher.encrypt(self.group_key)
             # compute the digital signature
-            h = SHA.new()
-            h.update(encrypted_group_key)
-            signer = PKCS1_PSS.new(self.manager.private_key)
-            signature = b64encode(signer.sign(h))
+            signature = self.compute_signature(encrypted_group_key)
             # send the message to the owner
-            encoded_msg = base64.encodestring(EncryptedMessage.format_message(encrypted_group_key, SEND_KEY, owner_str,signature))
+            encoded_msg = base64.encodestring(
+                EncryptedMessage.format_message(encrypted_group_key, SEND_KEY, owner_str, signature))
             self.manager.post_key_exchange_message(encoded_msg)
 
         # handle message containing group key
-        elif message["purpose"] == SEND_KEY and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE and message["receiver"] == self.manager.user_name:
+        elif message["purpose"] == SEND_KEY and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE and message[
+            "receiver"] == self.manager.user_name:
             # check the digital signature
-            pubkey = RSA.importKey(self.users_public_key[owner_str])
-            h = SHA.new()
-            h.update(message["content"])
-            verifier = PKCS1_PSS.new(pubkey)
-            if verifier.verify(h, b64decode(message["signature"])):
+            if self.check_signature(message, self.users_public_key[owner_str]):
                 cipher = PKCS1_OAEP.new(self.manager.private_key)
                 self.group_key = cipher.decrypt(message["content"])
                 print "Receive group key: " + self.group_key
                 self.key_exchange_state = KEY_EXCHANGE_DONE
                 # process all the message stored in the history
                 for i in self.message_history:
-                    self.process_incoming_message(i[0],i[1],i[2])
+                    self.process_incoming_message(i[0], i[1], i[2])
             else:
                 # post another message to request the key
                 encoded_msg = base64.encodestring(
-                    EncryptedMessage.format_message("", REQUEST_KEY, self.manager.get_active_user_for_current_conversation()["user_list"][0]))
+                    EncryptedMessage.format_message("", REQUEST_KEY,
+                                                    self.manager.get_active_user_for_current_conversation()[
+                                                        "user_list"][0]))
                 self.manager.post_key_exchange_message(encoded_msg)
         # if key exchange is not done, save the message to history
-        elif message["purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
-            self.message_history.append([msg_raw,msg_id,owner_str])
+        elif message[
+            "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
+            self.message_history.append([msg_raw, msg_id, owner_str])
         # process the mesasge if key exchange is done
-        elif message["purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
-            # print message and add it to the list of printed messages
-            self.print_message(
-                msg_raw=message["content"],
-                owner_str=owner_str
-            )
+        elif message[
+            "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
+            # check whether signature is valid
+            if self.check_signature(message, self.users_public_key[owner_str]):
+                # print message and add it to the list of printed messages
+                self.print_message(
+                    msg_raw=self.cbc_decode(message["content"]),
+                    owner_str=owner_str
+                )
+
+    def check_signature(self, message, public_key):
+        pubkey = RSA.importKey(public_key)
+        h = SHA.new()
+        h.update(message["content"])
+        verifier = PKCS1_PSS.new(pubkey)
+        if verifier.verify(h, b64decode(message["signature"])):
+            return True
+        return False
+
+    def compute_signature(self, message):
+        h = SHA.new()
+        h.update(message)
+        signer = PKCS1_PSS.new(self.manager.private_key)
+        signature = b64encode(signer.sign(h))
+        return signature
 
     def process_outgoing_message(self, msg_raw, originates_from_console=False):
         # if message purpose is new message
-        #     1) Encrypt the message using the group key
+        #     1) Encrypt the message using the group key (done)
         #     2) Attach the digital signature
-        #     3) Attach the owner
+        #     3) Attach the owner (done)
         #     4) Attach a sequence number
-        #     5) Attach the purpose
+        #     5) Attach the purpose (done)
 
         # ignore other situations
 
         # example is base64 encoding, extend this with any crypto processing of your protocol
-        message = EncryptedMessage.format_message(msg_raw, MESSAGE)
+        msg_raw = self.cbc_encode(msg_raw)
+        signature = self.compute_signature(msg_raw)
+        message = EncryptedMessage.format_message(msg_raw, MESSAGE,"",signature)
         message = base64.encodestring(message)
         if originates_from_console == True or message["purpose"] == SEND_KEY or message["purpose"] == REQUEST_KEY:
             # message is already seen on the console
@@ -125,3 +144,23 @@ class EncryptedConversation(Conversation):
 
         # post the message to the conversation
         self.manager.post_message_to_conversation(message)
+
+    def cbc_encode(self, msg_raw):
+        # TLS style padding
+        plength = AES.block_size - (len(msg_raw) % AES.block_size)
+        msg_raw += chr(plength) * plength
+
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.group_key, AES.MODE_CBC, iv)
+
+        return b64encode(iv + cipher.encrypt(msg_raw))
+
+    def cbc_decode(self, msg):
+        msg = b64decode(msg)
+        iv = msg[:AES.block_size]
+        msg = msg[AES.block_size:]
+        cipher = AES.new(self.group_key, AES.MODE_CBC, iv)
+        msg = cipher.decrypt(msg)
+        # remove padding
+        msg = msg[:len(msg) - ord(msg[-1])]
+        return msg

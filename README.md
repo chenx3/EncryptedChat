@@ -1,10 +1,17 @@
 # EncryptedChat
 
 Implemented:
+
 group key exchange (using PKSC1, in encrypted_conversation class) 
-Digital Signature (using SHA256, in encrypted_conversation class)
+
+Digital Signature (using PKCS1_PSS, in encrypted_conversation class)
+
 Message Format (in encryted_message class)
 
+Message Encryption (in AES_CBC)
+
 Todo:
-Message Encryption (inclusing encryption, sequence number, and digital signature)
+
+Sequence Number
+
 Nonce to ensure key freshness
