@@ -11,9 +11,24 @@ from conversation import Conversation
 from config import *
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
+from Crypto.Random import random
+import time
 
 
 class EncryptedConversation(Conversation):
+    def generate_nonce(self,length=8):
+        return ''.join([str(random.randint(0, 9)) for i in range(length)])
+
+    def handle_key_exchange_message(self, message):
+        result = {}
+        result["key"] = message[-AES.key_size[1]:]
+        rest = message[:-AES.key_size[1]].split("|")
+        result["user"] = base64.decodestring(rest[0])
+        result["sender"] = base64.decodestring(rest[1])
+        result["nonce"] = rest[2]
+        print result
+        return result
+
     def setup_conversation(self):
         # Acquire active_user_list and all the public keys of every participants in the conversation
         info = self.manager.get_active_user_for_current_conversation()
@@ -29,8 +44,11 @@ class EncryptedConversation(Conversation):
             print "Generate group key: " + self.group_key
         # if there exists a client in chat room, send a nonce to the server to request a group key
         else:
+            self.nonce_sent_time = time.time()
+            print "Generating nonce: " + str(self.nonce_sent_time)
+            self.nonce = self.generate_nonce(8)
             encoded_msg = base64.encodestring(
-                EncryptedMessage.format_message("", REQUEST_KEY, list_of_users[0]))
+                EncryptedMessage.format_message(self.nonce, REQUEST_KEY, list_of_users[0]))
             # post the message to the conversation
             self.manager.post_key_exchange_message(encoded_msg)
 
@@ -61,7 +79,10 @@ class EncryptedConversation(Conversation):
             # encode the group key in public key of the owner
             pubkey = RSA.importKey(self.users_public_key[owner_str])
             cipher = PKCS1_OAEP.new(pubkey)
-            encrypted_group_key = cipher.encrypt(self.group_key)
+            key_exchange_message = base64.encodestring(owner_str) + "|" + base64.encodestring(self.manager.user_name) + "|" + str(message[
+                "content"]) + "|" + self.group_key
+            print "Sending key exchange message: " + key_exchange_message
+            encrypted_group_key = cipher.encrypt(key_exchange_message)
             # compute the digital signature
             signature = self.compute_signature(encrypted_group_key)
             # send the message to the owner
@@ -75,19 +96,22 @@ class EncryptedConversation(Conversation):
             # check the digital signature
             if self.check_signature(message, self.users_public_key[owner_str]):
                 cipher = PKCS1_OAEP.new(self.manager.private_key)
-                self.group_key = cipher.decrypt(message["content"])
-                print "Receive group key: " + self.group_key
-                self.key_exchange_state = KEY_EXCHANGE_DONE
-                # process all the message stored in the history
-                for i in self.message_history:
-                    self.process_incoming_message(i[0], i[1], i[2])
+                decrypted_message = cipher.decrypt(message["content"])
+                received_message = self.handle_key_exchange_message(decrypted_message)
+                # check whether the nonce is valid
+                if received_message["sender"] == owner_str and received_message["user"] ==  self.manager.user_name and time.time()-self.nonce_sent_time < 15 and received_message["nonce"] == str(self.nonce):
+                    print time.time()-self.nonce_sent_time
+                    self.group_key = received_message["key"]
+                    print "Receive group key: " + self.group_key
+                    self.key_exchange_state = KEY_EXCHANGE_DONE
+                    # process all the message stored in the history
+                    for i in self.message_history:
+                        self.process_incoming_message(i[0], i[1], i[2])
+                else:
+                    print "Key Exchange Failed"
+                    self.request_key()
             else:
-                # post another message to request the key
-                encoded_msg = base64.encodestring(
-                    EncryptedMessage.format_message("", REQUEST_KEY,
-                                                    self.manager.get_active_user_for_current_conversation()[
-                                                        "user_list"][0]))
-                self.manager.post_key_exchange_message(encoded_msg)
+                self.request_key()
         # if key exchange is not done, save the message to history
         elif message[
             "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
@@ -97,7 +121,8 @@ class EncryptedConversation(Conversation):
             "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
             # check whether the sequence number is valid
             if message["sequence_number"] > self.sequence_numbers[owner_str]:
-                print "Receiving message with sequence number: " + str(message["sequence_number"]) + " by owner: " + owner_str
+                print "Receiving message with sequence number: " + str(
+                    message["sequence_number"]) + " by owner: " + owner_str
                 self.sequence_numbers[owner_str] += 1
                 # check whether signature is valid
                 if self.check_signature(message, self.users_public_key[owner_str]):
@@ -106,6 +131,14 @@ class EncryptedConversation(Conversation):
                         msg_raw=self.cbc_decode(message["content"]),
                         owner_str=owner_str
                     )
+
+    def request_key(self):
+        # post another message to request the key
+        encoded_msg = base64.encodestring(
+            EncryptedMessage.format_message("", REQUEST_KEY,
+                                            self.manager.get_active_user_for_current_conversation()[
+                                                "user_list"][0]))
+        self.manager.post_key_exchange_message(encoded_msg)
 
     def check_signature(self, message, public_key):
         pubkey = RSA.importKey(public_key)
@@ -139,8 +172,9 @@ class EncryptedConversation(Conversation):
         # compute the sequence number
         self.sequence_numbers[self.manager.user_name] += 1
         sequence_number = self.sequence_numbers[self.manager.user_name]
-        print "Sending out message with sequence number: " + str(sequence_number) + " by owner: " + self.manager.user_name
-        message = EncryptedMessage.format_message(msg_raw, MESSAGE,"",signature,sequence_number)
+        print "Sending out message with sequence number: " + str(
+            sequence_number) + " by owner: " + self.manager.user_name
+        message = EncryptedMessage.format_message(msg_raw, MESSAGE, "", signature, sequence_number)
         message = base64.encodestring(message)
         if originates_from_console == True or message["purpose"] == SEND_KEY or message["purpose"] == REQUEST_KEY:
             # message is already seen on the console

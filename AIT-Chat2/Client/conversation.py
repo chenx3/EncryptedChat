@@ -15,6 +15,8 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
+        self.nonce = 0
+        self.nonce_sent_time = 0
         self.sequence_numbers = {}
         self.message_history_printed =False
         self.message_history = []
