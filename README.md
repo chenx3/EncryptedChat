@@ -10,8 +10,8 @@ Message Format (in encryted_message class)
 
 Message Encryption (in AES_CBC)
 
-Todo:
-
 Sequence Number
+
+Todo:
 
 Nonce to ensure key freshness
