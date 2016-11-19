@@ -15,6 +15,7 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
+        self.sequence_numbers = {}
         self.message_history_printed =False
         self.message_history = []
         self.users_public_key = {}

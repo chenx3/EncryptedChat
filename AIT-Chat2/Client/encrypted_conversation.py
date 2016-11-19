@@ -19,6 +19,8 @@ class EncryptedConversation(Conversation):
         info = self.manager.get_active_user_for_current_conversation()
         list_of_users = info["user_list"]
         self.users_public_key = info["user_info"]
+        for i in self.users_public_key.keys():
+            self.sequence_numbers[i] = 0
         # if no one in chat room, generate a group key, encrypt it and save it.
         if list_of_users == [self.manager.user_name]:
             key = Random.new().read(AES.key_size[1])
@@ -90,16 +92,20 @@ class EncryptedConversation(Conversation):
         elif message[
             "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
             self.message_history.append([msg_raw, msg_id, owner_str])
-        # process the mesasge if key exchange is done
+        # process the message if key exchange is done
         elif message[
             "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
-            # check whether signature is valid
-            if self.check_signature(message, self.users_public_key[owner_str]):
-                # print message and add it to the list of printed messages
-                self.print_message(
-                    msg_raw=self.cbc_decode(message["content"]),
-                    owner_str=owner_str
-                )
+            # check whether the sequence number is valid
+            if message["sequence_number"] > self.sequence_numbers[owner_str]:
+                print "Receiving message with sequence number: " + str(message["sequence_number"]) + " by owner: " + owner_str
+                self.sequence_numbers[owner_str] += 1
+                # check whether signature is valid
+                if self.check_signature(message, self.users_public_key[owner_str]):
+                    # print message and add it to the list of printed messages
+                    self.print_message(
+                        msg_raw=self.cbc_decode(message["content"]),
+                        owner_str=owner_str
+                    )
 
     def check_signature(self, message, public_key):
         pubkey = RSA.importKey(public_key)
@@ -120,7 +126,7 @@ class EncryptedConversation(Conversation):
     def process_outgoing_message(self, msg_raw, originates_from_console=False):
         # if message purpose is new message
         #     1) Encrypt the message using the group key (done)
-        #     2) Attach the digital signature
+        #     2) Attach the digital signature (done)
         #     3) Attach the owner (done)
         #     4) Attach a sequence number
         #     5) Attach the purpose (done)
@@ -130,7 +136,11 @@ class EncryptedConversation(Conversation):
         # example is base64 encoding, extend this with any crypto processing of your protocol
         msg_raw = self.cbc_encode(msg_raw)
         signature = self.compute_signature(msg_raw)
-        message = EncryptedMessage.format_message(msg_raw, MESSAGE,"",signature)
+        # compute the sequence number
+        self.sequence_numbers[self.manager.user_name] += 1
+        sequence_number = self.sequence_numbers[self.manager.user_name]
+        print "Sending out message with sequence number: " + str(sequence_number) + " by owner: " + self.manager.user_name
+        message = EncryptedMessage.format_message(msg_raw, MESSAGE,"",signature,sequence_number)
         message = base64.encodestring(message)
         if originates_from_console == True or message["purpose"] == SEND_KEY or message["purpose"] == REQUEST_KEY:
             # message is already seen on the console

@@ -35,9 +35,9 @@ In case of extending the Conversation class, You can add extra code to the setup
 In case of inheriting from the Conversation class, You will need to override only the above methods. In addition, You must modify chat_manager.py at line 295 and instantiate Your new inherited class.
 
 d:
-cd AIT-Chat2\Client
+cd EncryptedChat\AIT-Chat2\Client
 python main.py user_elon.json user_elon.pem
 
 d:
-cd AIT-Chat2\Client
+cd EncryptedChat\AIT-Chat2\Client
 python main.py user_steve.json user_steve.pem

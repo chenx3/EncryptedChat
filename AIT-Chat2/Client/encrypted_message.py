@@ -3,12 +3,13 @@ import base64
 
 class EncryptedMessage:
     @staticmethod
-    def format_message(content="", purpose="0", receiver="",signature=""):
+    def format_message(content="", purpose="0", receiver="",signature="",sequence_number = 0):
         dic = {}
         dic["content"] = base64.encodestring(content)
         dic["purpose"] = purpose
         dic["receiver"] = receiver
         dic["signature"] = signature
+        dic["sequence_number"] = sequence_number
         return json.dumps(dic)
 
     @staticmethod
