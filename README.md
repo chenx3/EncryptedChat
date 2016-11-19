@@ -12,6 +12,10 @@ Message Encryption (in AES_CBC)
 
 Sequence Number
 
+Nonces (with 15 seconds freshness)
+
 Todo:
 
-Nonce to ensure key freshness
+Testing
+
+Maybe password protection
