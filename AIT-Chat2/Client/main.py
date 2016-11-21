@@ -10,6 +10,10 @@ import os.path
 import json
 from Crypto.PublicKey import RSA
 
+import os
+import base64
+from Crypto.Protocol.KDF import PBKDF2
+
 
 def main():
     # Check the existence of the user credential configuration file
@@ -27,9 +31,13 @@ def main():
         # Load credentials
         credentials = json.load(credentials_file)
     try:
+        # encrypt the password
+        salt = "This is salt"
+        password = PBKDF2(credentials["password"], salt, dkLen=32, count=5000)
         # Initialize chat client with the provided credentials
         c = ChatManager(user_name=credentials["user_name"],
-                        password=credentials["password"])
+                        password=base64.encodestring(password))
+        print base64.encodestring(password)
     except KeyError:
         # In case the JSON file is malformed
         print "Unable to get user credentials from JSON file"

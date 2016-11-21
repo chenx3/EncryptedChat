@@ -120,6 +120,7 @@ class EncryptedConversation(Conversation):
         elif message[
             "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
             # check whether the sequence number is valid
+            # add error checking
             if message["sequence_number"] > self.sequence_numbers[owner_str]:
                 print "Receiving message with sequence number: " + str(
                     message["sequence_number"]) + " by owner: " + owner_str

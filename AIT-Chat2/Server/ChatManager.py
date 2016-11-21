@@ -1,7 +1,7 @@
 import copy
 from RegisteredUsers import RegisteredUsers
 from Conversation import Conversation
-
+import base64
 
 class ChatManager:
     def __init__(self):
