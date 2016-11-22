@@ -278,11 +278,14 @@ class ChatManager:
                     # While in a conversation, read the message (user input from the console)
                     msg_raw = raw_input()
                     print "\n"
-                    # Send the message to the server
-                    self.current_conversation.process_outgoing_message(
-                        msg_raw=msg_raw,
-                        originates_from_console=True
-                    )
+                    if self.current_conversation.key_exchange_state == KEY_EXCHANGE_DONE:
+                        # Send the message to the server
+                        self.current_conversation.process_outgoing_message(
+                            msg_raw=msg_raw,
+                            originates_from_console=True
+                        )
+                    else:
+                        print "Key exchange not done, cannot send out message"
                 except EOFError:
                     # User has not provided any input, but waiting for the input was interrupted
                     continue

@@ -44,13 +44,7 @@ class EncryptedConversation(Conversation):
             print "Generate group key: " + self.group_key
         # if there exists a client in chat room, send a nonce to the server to request a group key
         else:
-            self.nonce_sent_time = time.time()
-            print "Generating nonce: " + str(self.nonce_sent_time)
-            self.nonce = self.generate_nonce(8)
-            encoded_msg = base64.encodestring(
-                EncryptedMessage.format_message(self.nonce, REQUEST_KEY, list_of_users[0]))
-            # post the message to the conversation
-            self.manager.post_key_exchange_message(encoded_msg)
+            self.request_key()
 
     def process_incoming_message(self, msg_raw, msg_id, owner_str):
         # message format = (sequence number, owner, encrypted content, purpose, digital signature, receiver)
@@ -99,7 +93,9 @@ class EncryptedConversation(Conversation):
                 decrypted_message = cipher.decrypt(message["content"])
                 received_message = self.handle_key_exchange_message(decrypted_message)
                 # check whether the nonce is valid
-                if received_message["sender"] == owner_str and received_message["user"] ==  self.manager.user_name and time.time()-self.nonce_sent_time < 15 and received_message["nonce"] == str(self.nonce):
+                if received_message["nonce"] != str(self.nonce):
+                    return
+                if received_message["sender"] == owner_str and received_message["user"] ==  self.manager.user_name and time.time()-self.nonce_sent_time < 15:
                     print time.time()-self.nonce_sent_time
                     self.group_key = received_message["key"]
                     print "Receive group key: " + self.group_key
@@ -134,11 +130,17 @@ class EncryptedConversation(Conversation):
                     )
 
     def request_key(self):
-        # post another message to request the key
+        info = self.manager.get_active_user_for_current_conversation()
+        list_of_users = info["user_list"]
+        self.nonce_sent_time = time.time()
+        chosen_user = list_of_users[0]
+        for i in list_of_users:
+            if i != self.manager.user_name:
+                chosen_user = i
+        self.nonce = self.generate_nonce(8)
         encoded_msg = base64.encodestring(
-            EncryptedMessage.format_message("", REQUEST_KEY,
-                                            self.manager.get_active_user_for_current_conversation()[
-                                                "user_list"][0]))
+            EncryptedMessage.format_message(self.nonce, REQUEST_KEY, chosen_user))
+        # post the message to the conversation
         self.manager.post_key_exchange_message(encoded_msg)
 
     def check_signature(self, message, public_key):
