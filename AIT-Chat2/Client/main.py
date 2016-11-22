@@ -37,7 +37,6 @@ def main():
         # Initialize chat client with the provided credentials
         c = ChatManager(user_name=credentials["user_name"],
                         password=base64.encodestring(password))
-        print base64.encodestring(password)
     except KeyError:
         # In case the JSON file is malformed
         print "Unable to get user credentials from JSON file"
