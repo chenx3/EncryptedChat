@@ -15,6 +15,8 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
+        self.start_wait_time = 0
+        self.chosen_participant_list = []
         self.nonce = 0
         self.nonce_sent_time = 0
         self.sequence_numbers = {}

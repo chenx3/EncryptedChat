@@ -110,8 +110,9 @@ class EncryptedConversation(Conversation):
                 self.request_key()
         # if key exchange is not done, save the message to history
         elif message[
-            "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
+            "purpose"] == MESSAGE and self.key_exchange_state == KEY_EXCHANGE_NOT_DONE:
             self.message_history.append([msg_raw, msg_id, owner_str])
+
         # process the message if key exchange is done
         elif message[
             "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
@@ -128,15 +129,26 @@ class EncryptedConversation(Conversation):
                         msg_raw=self.cbc_decode(message["content"]),
                         owner_str=owner_str
                     )
+            else:
+                print "SEQUENCE NUMBER ERROR"
+
+        # This elif is used to update the client's sequence number after logging back into a conversation
+        elif message[
+            "purpose"] == MESSAGE and owner_str == self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
+            if message["sequence_number"] > self.sequence_numbers[self.manager.user_name]:
+                self.sequence_numbers[self.manager.user_name] = message["sequence_number"] + 1
+                print "Updated sequence number to "
+                print self.sequence_numbers[self.manager.user_name]
 
     def request_key(self):
         info = self.manager.get_active_user_for_current_conversation()
         list_of_users = info["user_list"]
         self.nonce_sent_time = time.time()
-        chosen_user = list_of_users[0]
+        chosen_user = ""
         for i in list_of_users:
-            if i != self.manager.user_name:
+            if i != self.manager.user_name and i not in self.chosen_participant_list:
                 chosen_user = i
+                self.chosen_participant_list.append(chosen_user)
         self.nonce = self.generate_nonce(8)
         encoded_msg = base64.encodestring(
             EncryptedMessage.format_message(self.nonce, REQUEST_KEY, chosen_user))
