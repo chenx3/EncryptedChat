@@ -115,7 +115,7 @@ class EncryptedConversation(Conversation):
 
         # process the message if key exchange is done
         elif message[
-            "purpose"] == MESSAGE and owner_str != self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
+            "purpose"] == MESSAGE and self.key_exchange_state == KEY_EXCHANGE_DONE:
             # check whether the sequence number is valid
             # add error checking
             if message["sequence_number"] > self.sequence_numbers[owner_str]:
@@ -129,16 +129,7 @@ class EncryptedConversation(Conversation):
                         msg_raw=self.cbc_decode(message["content"]),
                         owner_str=owner_str
                     )
-            else:
-                print "SEQUENCE NUMBER ERROR"
 
-        # This elif is used to update the client's sequence number after logging back into a conversation
-        elif message[
-            "purpose"] == MESSAGE and owner_str == self.manager.user_name and self.key_exchange_state == KEY_EXCHANGE_DONE:
-            if message["sequence_number"] > self.sequence_numbers[self.manager.user_name]:
-                self.sequence_numbers[self.manager.user_name] = message["sequence_number"] + 1
-                print "Updated sequence number to "
-                print self.sequence_numbers[self.manager.user_name]
 
     def request_key(self):
         info = self.manager.get_active_user_for_current_conversation()
