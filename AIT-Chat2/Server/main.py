@@ -86,9 +86,13 @@ class LoginHandler(JsonHandler):
         """
         
         private_key = RSA.importKey(open("server_key.pem").read())
+        cipher = PKCS1_OAEP.new(self.manager.private_key)
         
         user_name = self.request.arguments['user_name']
-        password = self.request.arguments['password']
+        encrypted_password = self.request.arguments['password']
+        
+        password = cipher.decrypt(message["content"])
+        
         current_user = cm.login_user(user_name, password)
 
         if current_user:
