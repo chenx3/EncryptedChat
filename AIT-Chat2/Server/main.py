@@ -297,5 +297,6 @@ def init_app():
 if __name__ == "__main__":
     cm = ChatManager()
     app = init_app()
+    print "Server Initialized"
     app.listen(8888)
     tornado.ioloop.IOLoop.current().start()
