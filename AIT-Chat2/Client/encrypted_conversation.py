@@ -18,11 +18,11 @@ import time
 
 
 class EncryptedConversation(Conversation):
-    def __init__(self,id,manager):
+    def __init__(self, id, manager):
         self.key_sent = []
         self.thread_started = False
-        self.key_regenerated = False
-        Conversation.__init__(self,id,manager)
+        self.key_identifier = -1
+        Conversation.__init__(self, id, manager)
         self.key_exchange_thread = Thread(
             target=self.handle_key_exchange
         )
@@ -32,11 +32,6 @@ class EncryptedConversation(Conversation):
 
     def handle_key_exchange_message(self, message):
         result = {}
-        if message[-1] == "0":
-            result["regenerate"] = True
-        else:
-            result["regenerate"] = False
-        message = message[:-1]
         result["key"] = message[-AES.key_size[1]:]
         rest = message[:-AES.key_size[1]].split("|")
         result["user"] = base64.decodestring(rest[0])
@@ -58,13 +53,12 @@ class EncryptedConversation(Conversation):
                     print "Conversation initiated..."
                     key = Random.new().read(AES.key_size[1])
                     self.group_key = key
-                    self.key_regenerated = True
+                    self.key_identifier = self.generate_nonce(8)
+                    # print "Generate key identifier for new group key: " + str(self.key_identifier)
                     for i in self.message_history:
                         self.sequence_numbers[i[2]] += 1
                     # print self.sequence_numbers
                     self.key_exchange_state = KEY_EXCHANGE_DONE
-
-
 
     def setup_conversation(self):
         # Acquire active_user_list and all the public keys of every participants in the conversation
@@ -78,6 +72,8 @@ class EncryptedConversation(Conversation):
             key = Random.new().read(AES.key_size[1])
             self.group_key = key
             self.key_exchange_state = KEY_EXCHANGE_DONE
+            self.key_identifier = self.generate_nonce(8)
+            # print "Generate key identifier: "+ str(self.key_identifier)
             print "Conversation initiated..."
         else:
             self.key_exchange_thread.start()
@@ -98,17 +94,15 @@ class EncryptedConversation(Conversation):
             key_exchange_message = base64.encodestring(owner_str) + "|" + base64.encodestring(
                 self.manager.user_name) + "|" + str(message[
                                                         "content"]) + "|" + self.group_key
-            if self.key_regenerated:
-                key_exchange_message += "0"
-            else:
-                key_exchange_message += "1"
             # print "Sending key exchange message: " + key_exchange_message
             encrypted_group_key = cipher.encrypt(key_exchange_message)
             # compute the digital signature
             signature = self.compute_signature(encrypted_group_key)
             # send the message to the owner
+            # print "Sending key identifier: "+str(self.key_identifier)
             encoded_msg = base64.encodestring(
-                EncryptedMessage.format_message(encrypted_group_key, SEND_KEY, owner_str, signature))
+                EncryptedMessage.format_message(encrypted_group_key, SEND_KEY, owner_str, signature,
+                                                0,self.key_identifier))
             self.manager.post_key_exchange_message(encoded_msg)
 
         # handle message containing group key
@@ -124,18 +118,21 @@ class EncryptedConversation(Conversation):
                     return
                 if received_message["sender"] == owner_str and received_message[
                     "user"] == self.manager.user_name and time.time() - self.nonce_sent_time < 15:
-                    # print time.time()-self.nonce_sent_time
+                    # print "Receiving group key: "+ received_message["key"]
                     self.group_key = received_message["key"]
                     print "Conversation initiated..."
+                    self.key_identifier = message["key_identifier"]
+                    # print "Receiving key_identifier: "+ str(message["key_identifier"])
                     self.key_exchange_state = KEY_EXCHANGE_DONE
                     # process all the message stored in the history
                     for i in self.message_history:
-                        if not received_message["regenerate"]:
+                        decoded_msg = base64.decodestring(i[0])
+                        message = EncryptedMessage.decode_message(decoded_msg)
+                        if message["key_identifier"] == self.key_identifier:
                             self.process_incoming_message(i[0], i[1], i[2])
                         else:
-                            self.key_regenerated = True
                             self.sequence_numbers[i[2]] += 1
-                    # print self.sequence_numbers
+                            # print self.sequence_numbers
 
         # if key exchange is not done, save the message to history
         elif message[
@@ -158,7 +155,6 @@ class EncryptedConversation(Conversation):
                         msg_raw=self.cbc_decode(message["content"]),
                         owner_str=owner_str
                     )
-
 
     def request_key(self):
         info = self.manager.get_active_user_for_current_conversation()
@@ -204,7 +200,7 @@ class EncryptedConversation(Conversation):
         sequence_number = self.sequence_numbers[self.manager.user_name]
         # print "Sending out message with sequence number: " + str(
         #     sequence_number) + " by owner: " + self.manager.user_name
-        message = EncryptedMessage.format_message(msg_raw, MESSAGE, "", signature, sequence_number)
+        message = EncryptedMessage.format_message(msg_raw, MESSAGE, "", signature, sequence_number, self.key_identifier)
         message = base64.encodestring(message)
         if originates_from_console == True or message["purpose"] == SEND_KEY or message["purpose"] == REQUEST_KEY:
             # message is already seen on the console

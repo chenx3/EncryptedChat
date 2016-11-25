@@ -41,3 +41,7 @@ python main.py user_elon.json user_elon.pem
 d:
 cd EncryptedChat\AIT-Chat2\Client
 python main.py user_steve.json user_steve.pem
+
+d:
+cd EncryptedChat\AIT-Chat2\Client
+python main.py user_bill.json user_bill.pem

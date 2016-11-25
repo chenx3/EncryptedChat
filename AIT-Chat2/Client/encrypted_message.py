@@ -3,8 +3,9 @@ import base64
 
 class EncryptedMessage:
     @staticmethod
-    def format_message(content="", purpose="0", receiver="",signature="",sequence_number = 0):
+    def format_message(content="", purpose="0", receiver="",signature="",sequence_number = 0,key_identifier = 0):
         dic = {}
+        dic["key_identifier"]=key_identifier
         dic["content"] = base64.encodestring(content)
         dic["purpose"] = purpose
         dic["receiver"] = receiver
