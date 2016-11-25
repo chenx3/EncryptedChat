@@ -20,7 +20,6 @@ class ChatManager:
     '''
     Class responsible for driving the application
     '''
-
     def __init__(self, user_name="", password=""):
         '''
         Constructor
@@ -48,11 +47,16 @@ class ChatManager:
         Logs the current user in
         :return: None
         '''
+        
+        pubkey = RSA.importKey(server_pub_key.pem)
+        cipher = PKCS1_OAEP.new(pubkey)
+        encrypted_password = cipher.encrypt(self.password)
+        
         print "Logging in..."
         # create JSON document of user credentials
         user_data = json.dumps({
             "user_name": self.user_name,
-            "password": self.password
+            "password": encrypted_password
         })
         try:
             # Send user credentials to the server
