@@ -84,6 +84,9 @@ class LoginHandler(JsonHandler):
         Upon successful login, the user is added to the active users list.
         Further user authentication happens through cookies.
         """
+        
+        private_key = RSA.importKey(open("server_key.pem").read())
+        
         user_name = self.request.arguments['user_name']
         password = self.request.arguments['password']
         current_user = cm.login_user(user_name, password)
