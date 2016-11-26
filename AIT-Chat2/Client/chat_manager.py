@@ -68,17 +68,19 @@ class ChatManager:
         sentNonce_encrypted = cipher_s.encrypt(sentNonce)
         sentNonce_encrypted_64 = base64.encodestring(sentNonce_encrypted)
         
-        user_name_encrypted = cipher_s.encrypt(self.user_name)
+        user_name_pln = str(self.user_name)
+        print type(str(user_name_pln))
+        user_name_encrypted = cipher_s.encrypt(user_name_pln)
         user_name_encrypted_64 = base64.encodestring(user_name_encrypted)
         
         name_and_nonce = json.dumps({
-            "user_name": user_name_encrypted_64,,
+            "user_name": user_name_encrypted_64,
             "nonce": sentNonce_encrypted_64
         })
         
         try:
             # Send user credentials to the server            
-            req0 = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/login", data=name_and_nonce)
+            req0 = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/getNonce", data=name_and_nonce)
             r0 = urllib2.urlopen(req0)
             
             
