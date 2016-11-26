@@ -60,7 +60,7 @@ class ChatManager:
         :return: None
         '''
         
-        pubkey = RSA.importKey("server_pub_key.pem")
+        pubkey = RSA.importKey(open("server_pub_key.pem").read())
         cipher_s = PKCS1_OAEP.new(pubkey)
         encrypted_password = cipher_s.encrypt(self.password)
         encrypted_password_64 = base64.encodestring(encrypted_password)
