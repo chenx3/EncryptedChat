@@ -69,7 +69,7 @@ class ChatManager:
         sentNonce_encrypted_64 = base64.encodestring(sentNonce_encrypted)
         
         user_name_pln = str(self.user_name)
-        print type(str(user_name_pln))
+        #print type(str(user_name_pln))
         user_name_encrypted = cipher_s.encrypt(user_name_pln)
         user_name_encrypted_64 = base64.encodestring(user_name_encrypted)
         
