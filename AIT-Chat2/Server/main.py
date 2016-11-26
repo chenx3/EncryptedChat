@@ -2,6 +2,25 @@ import tornado.ioloop
 import tornado.web
 import json
 
+from Crypto.Cipher import AES
+from Crypto import Random
+from base64 import b64encode
+from base64 import b64decode
+from Crypto.Signature import PKCS1_PSS
+from Crypto.Hash import SHA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Random import random
+
+import time
+import urllib2
+import json
+from time import sleep
+
+from threading import Thread
+
+import base64
+
 from ChatManager import ChatManager
 
 
@@ -86,12 +105,13 @@ class LoginHandler(JsonHandler):
         """
         
         private_key = RSA.importKey(open("server_key.pem").read())
-        cipher = PKCS1_OAEP.new(self.manager.private_key)
+        cipher = PKCS1_OAEP.new(private_key)
         
         user_name = self.request.arguments['user_name']
         encrypted_password = self.request.arguments['password']
         
-        password = cipher.decrypt(message["content"])
+        encrypted_password_raw = base64.decodestring(encrypted_password)
+        password = cipher.decrypt(encrypted_password_raw)
         
         current_user = cm.login_user(user_name, password)
 
