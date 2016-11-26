@@ -1,8 +1,20 @@
-from encrypted_conversation import EncryptedConversation
+from Crypto.Cipher import AES
+from Crypto import Random
+from encrypted_message import EncryptedMessage
+from base64 import b64encode
+from base64 import b64decode
+from Crypto.Signature import PKCS1_PSS
+from Crypto.Hash import SHA
+from conversation import Conversation
 from config import *
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Random import random
+
+import time
+from encrypted_conversation import EncryptedConversation
 import urllib2
 import json
-from conversation import Conversation
 from message import Message, MessageEncoder
 from time import sleep
 
@@ -20,7 +32,6 @@ class ChatManager:
     '''
     Class responsible for driving the application
     '''
-
     def __init__(self, user_name="", password=""):
         '''
         Constructor
@@ -45,19 +56,36 @@ class ChatManager:
 
     def login_user(self):
         '''
-        Logs the current user in
+        Logs the curret user in
         :return: None
         '''
+        
+        pubkey = RSA.importKey(open("server_pub_key.pem").read())
+        cipher_s = PKCS1_OAEP.new(pubkey)
+        encrypted_password = cipher_s.encrypt(self.password)
+        encrypted_password_64 = base64.encodestring(encrypted_password)
+        
+        snonce = ''.join([str(random.randint(0, 9)) for i in range(8)])
+        snonce_encrypted = cipher_s.encrypt(snonce)
+        snonce_encrypted_64 = base64.encodestring(snonce_encrypted)
+        
         print "Logging in..."
         # create JSON document of user credentials
         user_data = json.dumps({
             "user_name": self.user_name,
-            "password": self.password
+            "password": encrypted_password_64,
+            "nonce": snonce_encrypted_64
         })
         try:
-            # Send user credentials to the server
+            # Send user credentials to the server            
             req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/login", data=user_data)
             r = urllib2.urlopen(req)
+            
+            cipher_r = PKCS1_OAEP.new(self.private_key)
+            rnonce_encrypted_64 = json.loads(r.read())
+            rnonce_encrypted = base64.decodestring(rnonce_encrypted_64)
+            rnonce = cipher_r.decrypt(rnonce_encrypted)
+            
             headers = r.info().headers
             cookie_found = False
             # Search for the cookie in the response headers
@@ -65,15 +93,20 @@ class ChatManager:
                 if "Set-Cookie" in header:
                     self.cookie = header.split("Set-Cookie: ")[1].split(";")[0]
                     cookie_found = True
-            if cookie_found == True:
+            if cookie_found == True and rnonce == snonce:
                 # Cookie found, login successful
                 self.is_logged_in = True
                 print "Login successful"
+            elif coodie_found == True:
+                # Server returned bad nonce
+                self.user_name = ""
+                self.password = ""
+                print "Login unsuccessful, received bad nonce"
             else:
                 # No cookie, login unsuccessful
                 self.user_name = ""
                 self.password = ""
-                print "Login unsuccessful, did not receive cookie from server"
+                print "Login unsuccessful, did not receive cookie from server"        
         except urllib2.HTTPError as e:
             # HTTP error happened, the response status is not 200 (OK)
             print "Unable to log in, server returned HTTP", e.code, e.msg

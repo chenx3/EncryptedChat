@@ -2,6 +2,25 @@ import tornado.ioloop
 import tornado.web
 import json
 
+from Crypto.Cipher import AES
+from Crypto import Random
+from base64 import b64encode
+from base64 import b64decode
+from Crypto.Signature import PKCS1_PSS
+from Crypto.Hash import SHA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Random import random
+
+import time
+import urllib2
+import json
+from time import sleep
+
+from threading import Thread
+
+import base64
+
 from ChatManager import ChatManager
 
 
@@ -72,7 +91,6 @@ class MainHandler(tornado.web.RequestHandler):
         print "Main function, redirecting to login..."
         self.redirect("/login")
 
-
 class LoginHandler(JsonHandler):
     def data_received(self, chunk):
         pass
@@ -84,13 +102,37 @@ class LoginHandler(JsonHandler):
         Upon successful login, the user is added to the active users list.
         Further user authentication happens through cookies.
         """
+        
+        private_key = RSA.importKey(open("server_key.pem").read())
+        cipher = PKCS1_OAEP.new(private_key)
+        
         user_name = self.request.arguments['user_name']
-        password = self.request.arguments['password']
+        encrypted_password = self.request.arguments['password']
+        
+        encrypted_password_raw = base64.decodestring(encrypted_password)
+        password = cipher.decrypt(encrypted_password_raw)
+        
+        encrypted_nonce_64 = self.request.arguments['nonce']
+        encrypted_nonce = base64.decodestring(encrypted_nonce_64)
+        nonce = cipher.decrypt(encrypted_nonce)
+        
         current_user = cm.login_user(user_name, password)
 
         if current_user:
             if not self.get_secure_cookie(Constants.COOKIE_NAME):
                 self.set_secure_cookie(Constants.COOKIE_NAME, user_name)
+            
+            kfile = open(user_name.lower() + '-pubkey.pem')
+            keystr = kfile.read()
+            kfile.close()
+            user_pubkey = RSA.importKey(keystr)
+            reply_cipher = PKCS1_OAEP.new(user_pubkey)
+            
+            encrypted_reply_nonce = reply_cipher.encrypt(nonce)
+            encrypted_reply_nonce_64 = base64.encodestring(encrypted_reply_nonce)
+            self.response = encrypted_reply_nonce_64
+            self.write_json()
+            
             print "User " + user_name + " successfully logged in!"
             self.set_status(200)
             self.finish()
@@ -297,5 +339,6 @@ def init_app():
 if __name__ == "__main__":
     cm = ChatManager()
     app = init_app()
+    print "Server Initialized"
     app.listen(8888)
     tornado.ioloop.IOLoop.current().start()
