@@ -80,6 +80,7 @@ class JsonHandler(tornado.web.RequestHandler):
 
 
 class MainHandler(tornado.web.RequestHandler):
+
     def data_received(self, chunk):
         pass
 
@@ -103,8 +104,12 @@ class LoginHandler(JsonHandler):
         Further user authentication happens through cookies.
         """
         
-        private_key = RSA.importKey(open("server_key.pem").read())
-        cipher = PKCS1_OAEP.new(private_key)
+        try:
+            private_key = RSA.importKey(open("server_key.pem").read())
+            cipher = PKCS1_OAEP.new(private_key)
+        except Exception as e:
+            self.send_error(400, message=e.message)
+            return
         
         user_name = self.request.arguments['user_name']
         encrypted_password = self.request.arguments['password']
@@ -116,9 +121,14 @@ class LoginHandler(JsonHandler):
         encrypted_nonce = base64.decodestring(encrypted_nonce_64)
         nonce = cipher.decrypt(encrypted_nonce)
         
+        encrypted_CMnonce_64 = self.request.arguments['cmnonce']
+        encrypted_CMnonce = base64.decodestring(encrypted_CMnonce_64)
+        cmnonce = cipher.decrypt(encrypted_CMnonce)
+        
         current_user = cm.login_user(user_name, password)
 
-        if current_user:
+        if current_user and cmnonce == cm.getNonce():
+            cm.set_nonce()
             if not self.get_secure_cookie(Constants.COOKIE_NAME):
                 self.set_secure_cookie(Constants.COOKIE_NAME, user_name)
             
@@ -129,6 +139,7 @@ class LoginHandler(JsonHandler):
             reply_cipher = PKCS1_OAEP.new(user_pubkey)
             
             encrypted_reply_nonce = reply_cipher.encrypt(nonce)
+            #print encrypted_reply_nonce
             encrypted_reply_nonce_64 = base64.encodestring(encrypted_reply_nonce)
             self.response = encrypted_reply_nonce_64
             self.write_json()
@@ -140,6 +151,52 @@ class LoginHandler(JsonHandler):
             # authentication error
             self.set_status(401)
             self.finish()
+
+class GetNonceHandler(JsonHandler):
+    """
+    Sends the client the current cm nonce
+    """
+    def data_received(self, chunk):
+        pass
+    
+    def post(self):
+        
+        private_key = RSA.importKey(open("server_key.pem").read())
+        cipher = PKCS1_OAEP.new(private_key)
+        
+        encrypted_user_name_64 = self.request.arguments['user_name']
+        
+        encrypted_user_name = base64.decodestring(encrypted_user_name_64)
+        user_name = cipher.decrypt(encrypted_user_name)
+        
+        encrypted_nonce_64 = self.request.arguments['nonce']
+        encrypted_nonce = base64.decodestring(encrypted_nonce_64)
+        clnonce = cipher.decrypt(encrypted_nonce)
+        
+        try:
+            cmnonce = cm.getNonce()
+            kfile = open(user_name.lower() + '-pubkey.pem')
+            keystr = kfile.read()
+            kfile.close()
+            user_pubkey = RSA.importKey(keystr)
+            reply_cipher = PKCS1_OAEP.new(user_pubkey)
+        except Exception as e:
+            self.send_error(400, message=e.message)
+            return
+        
+        encrypted_reply_cmnonce = reply_cipher.encrypt(cmnonce)
+        encrypted_reply_cmnonce_64 = base64.encodestring(encrypted_reply_cmnonce)
+        
+        encrypted_reply_clnonce = reply_cipher.encrypt(clnonce)
+        encrypted_reply_clnonce_64 = base64.encodestring(encrypted_reply_clnonce)
+        
+        #print clnonce, cmnonce
+        self.response = {"clnonce": encrypted_reply_clnonce_64, "cmnonce": encrypted_reply_cmnonce_64}
+        #two_nonces = [encrypted_reply_clnonce_64, encrypted_reply_cmnonce_64]
+        #self.write_json(json.dumps(two_nonces))
+        
+         #= {"user_list":active_user_list, "user_info": participants_info}
+        self.write_json()
 
 
 class UsersHandler(JsonHandler):
@@ -325,6 +382,7 @@ def init_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/login", LoginHandler),
+        (r"/getNonce", GetNonceHandler),
         (r"/users", UsersHandler),
         (r"/conversations", ConversationHandler),
         (r"/conversation_active_user/([0-9]+)", ConversationUserHandler),
@@ -338,6 +396,7 @@ def init_app():
 
 if __name__ == "__main__":
     cm = ChatManager()
+    cm.set_nonce()
     app = init_app()
     print "Server Initialized"
     app.listen(8888)
