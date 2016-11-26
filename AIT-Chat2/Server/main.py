@@ -141,6 +141,42 @@ class LoginHandler(JsonHandler):
             self.set_status(401)
             self.finish()
 
+class GetNonceHandler(JsonHandler):
+    """
+    Sends the client the current cm nonce
+    """
+    def data_received(self, chunk):
+        pass
+    
+    def post(self):
+        
+        private_key = RSA.importKey(open("server_key.pem").read())
+        cipher = PKCS1_OAEP.new(private_key)
+        
+        encrypted_user_name_64 = self.request.arguments['user_name']
+        
+        encrypted_user_name = base64.decodestring(encrypted_user_name_64)
+        user_name = cipher.decrypt(encrypted_user_name)
+        
+        encrypted_nonce_64 = self.request.arguments['nonce']
+        encrypted_nonce = base64.decodestring(encrypted_nonce_64)
+        nonce = cipher.decrypt(encrypted_nonce)
+        
+        nonceToSend = cm.getNonce()
+        kfile = open(user_name.lower() + '-pubkey.pem')
+        keystr = kfile.read()
+        kfile.close()
+        user_pubkey = RSA.importKey(keystr)
+        reply_cipher = PKCS1_OAEP.new(user_pubkey)
+        
+        encrypted_reply_cmnonce = reply_cipher.encrypt(nonceToSend)
+        encrypted_reply_cmnonce_64 = base64.encodestring(encrypted_reply_nonce)
+        
+        encrypted_reply_clnonce = reply_cipher.encrypt(nonce)
+        encrypted_reply_clnonce_64 = base64.encodestring(encrypted_reply_nonce)
+        
+        self.response = [encrypted_reply_clnonce_64, encrypted_reply_cmnonce]
+        self.write_json()
 
 class UsersHandler(JsonHandler):
     def data_received(self, chunk):
@@ -325,6 +361,7 @@ def init_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/login", LoginHandler),
+        (r"/getNonce", GetNonceHandler),
         (r"/users", UsersHandler),
         (r"/conversations", ConversationHandler),
         (r"/conversation_active_user/([0-9]+)", ConversationUserHandler),
