@@ -62,6 +62,52 @@ class ChatManager:
         
         pubkey = RSA.importKey(open("server_pub_key.pem").read())
         cipher_s = PKCS1_OAEP.new(pubkey)
+        cipher_r = PKCS1_OAEP.new(self.private_key)
+        
+        sentNonce = ''.join([str(random.randint(0, 9)) for i in range(8)])
+        sentNonce_encrypted = cipher_s.encrypt(sentNonce)
+        sentNonce_encrypted_64 = base64.encodestring(sentNonce_encrypted)
+        
+        user_name_encrypted = cipher_s.encrypt(self.user_name)
+        user_name_encrypted_64 = base64.encodestring(user_name_encrypted)
+        
+        name_and_nonce = json.dumps({
+            "user_name": user_name_encrypted_64,,
+            "nonce": sentNonce_encrypted_64
+        })
+        
+        try:
+            # Send user credentials to the server            
+            req0 = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/login", data=name_and_nonce)
+            r0 = urllib2.urlopen(req0)
+            
+            
+            nonceResponse = json.loads(r0.read())
+            clnonce_encrypted_64 = nonceResponse["clnonce"]
+            clnonce_encrypted = base64.decodestring(clnonce_encrypted_64)
+            clnonce = cipher_r.decrypt(clnonce_encrypted)
+            
+            cmnonce_encrypted_64 = nonceResponse["cmnonce"]
+            cmnonce_encrypted = base64.decodestring(cmnonce_encrypted_64)
+            cmnonce = cipher_r.decrypt(cmnonce_encrypted)
+            
+            if clnonce != sentNonce:
+                print "Server returned bad nonce."
+                return
+                 
+        except urllib2.HTTPError as e:
+            # HTTP error happened, the response status is not 200 (OK)
+            print "Unable to log in, server returned HTTP", e.code, e.msg
+            self.user_name = ""
+            self.password = ""
+            self.is_logged_in = False
+        except urllib2.URLError as e:
+            # Other kinds of errors related to the network
+            print "Unable to log in, reason:", e.message
+            self.user_name = ""
+            self.password = ""
+            self.is_logged_in = False
+        
         encrypted_password = cipher_s.encrypt(self.password)
         encrypted_password_64 = base64.encodestring(encrypted_password)
         
@@ -69,12 +115,16 @@ class ChatManager:
         snonce_encrypted = cipher_s.encrypt(snonce)
         snonce_encrypted_64 = base64.encodestring(snonce_encrypted)
         
+        cmnonce_encrypted = cipher_s.encrypt(cmnonce)
+        cmnonce_encrypted_64 = base64.encodestring(cmnonce_encrypted)
+        
         print "Logging in..."
         # create JSON document of user credentials
         user_data = json.dumps({
             "user_name": self.user_name,
             "password": encrypted_password_64,
-            "nonce": snonce_encrypted_64
+            "nonce": snonce_encrypted_64,
+            "cmnonce": cmnonce_encrypted_64
         })
         try:
             # Send user credentials to the server            
