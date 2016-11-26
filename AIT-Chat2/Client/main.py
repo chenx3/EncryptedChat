@@ -43,7 +43,8 @@ def main():
         return
 
     # Load credentials
-    private_key = RSA.importKey(open(sys.argv[2]).read())
+    userPEMfile = sys.argv[1][:-4] + "pem"
+    private_key = RSA.importKey(open(userPEMfile).read())
     c.set_private_key(private_key)
 
     # Register function of menu handling to specific signals from the OS
