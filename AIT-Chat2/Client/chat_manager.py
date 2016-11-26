@@ -26,7 +26,7 @@ import base64
 
 state = INIT  # initial state for the application
 has_requested_messages = False  # history of the next conversation will need to be downloaded and printed
-_
+
 
 class ChatManager:
     '''
@@ -56,25 +56,33 @@ class ChatManager:
 
     def login_user(self):
         '''
-        Logs the current user in
+        Logs the curret user in
         :return: None
         '''
         
         pubkey = RSA.importKey("server_pub_key.pem")
         cipher = PKCS1_OAEP.new(pubkey)
-        encrypted_password_raw = cipher.encrypt(self.password)
-        encrypted_password = base64.encodestring(encrypted_password_raw)
+        encrypted_password = cipher.encrypt(self.password)
+        encrypted_password_64 = base64.encodestring(encrypted_password)
+        
+        snonce = ''.join([str(random.randint(0, 9)) for i in range(8)])
+        snonce_encrypted = cipher.encrypt(snonce)
+        snonce_encrypted_64 = base64.encodestring(snonce_encrypted)
         
         print "Logging in..."
         # create JSON document of user credentials
         user_data = json.dumps({
             "user_name": self.user_name,
-            "password": encrypted_password
+            "password": encrypted_password_64,
+            "nonce": snonce_encrypted_64
         })
         try:
-            # Send user credentials to the server
+            # Send user credentials to the server            
             req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/login", data=user_data)
             r = urllib2.urlopen(req)
+            rnonce_encrypted_64 = json.loads(r.read())
+            rnonce_encrypted = base64.decodestring(nonce_encrypted_64)
+            
             headers = r.info().headers
             cookie_found = False
             # Search for the cookie in the response headers
@@ -90,8 +98,7 @@ class ChatManager:
                 # No cookie, login unsuccessful
                 self.user_name = ""
                 self.password = ""
-                print "Login unsuccessful, did not receive cookie from server"
-        except urllib2.HTTPError as e:
+                print "Login unsuccessful, did not receive cookie from server"        except urllib2.HTTPError as e:
             # HTTP error happened, the response status is not 200 (OK)
             print "Unable to log in, server returned HTTP", e.code, e.msg
             self.user_name = ""
@@ -101,7 +108,7 @@ class ChatManager:
             # Other kinds of errors related to the network
             print "Unable to log in, reason:", e.message
             self.user_name = ""
-            self.password = ""
+j            self.password = ""
             self.is_logged_in = False
 
     def create_conversation(self):
