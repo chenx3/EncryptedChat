@@ -17,11 +17,11 @@ from Crypto.Protocol.KDF import PBKDF2
 
 def main():
     # Check the existence of the user credential configuration file
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print "Specify configuration file from which user credentials are to be read!"
         return
     if os.path.exists(sys.argv[1]) == False:
-        print "Specified configuration file does not exists!"
+        print "Specified configuration file does not exist!"
         return
     credentials = {
         "user_name" : "",
@@ -43,7 +43,14 @@ def main():
         return
 
     # Load credentials
-    private_key = RSA.importKey(open(sys.argv[2]).read())
+    userPEMfile = sys.argv[1][:-4] + "pem"
+    try:
+        private_key = RSA.importKey(open(userPEMfile).read())
+    except IOError:
+        # In case the pem file is missing
+        errorMessage = "The private RSA key associated with " + sys.argv[1] + " must be stored in " + userPEMfile
+        print errorMessage
+        return
     c.set_private_key(private_key)
 
     # Register function of menu handling to specific signals from the OS
