@@ -61,8 +61,8 @@ class ChatManager:
         '''
         
         pubkey = RSA.importKey("server_pub_key.pem")
-        cipher = PKCS1_OAEP.new(pubkey)
-        encrypted_password = cipher.encrypt(self.password)
+        cipher_s = PKCS1_OAEP.new(pubkey)
+        encrypted_password = cipher_s.encrypt(self.password)
         encrypted_password_64 = base64.encodestring(encrypted_password)
         
         snonce = ''.join([str(random.randint(0, 9)) for i in range(8)])
@@ -80,8 +80,11 @@ class ChatManager:
             # Send user credentials to the server            
             req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/login", data=user_data)
             r = urllib2.urlopen(req)
+            
+            cipher_r = PKCS1_OAEP.new(self.manager.private_key)
             rnonce_encrypted_64 = json.loads(r.read())
             rnonce_encrypted = base64.decodestring(nonce_encrypted_64)
+            rnonce = cipher_r.decrypt(rnonce_encrypted)
             
             headers = r.info().headers
             cookie_found = False
@@ -90,15 +93,21 @@ class ChatManager:
                 if "Set-Cookie" in header:
                     self.cookie = header.split("Set-Cookie: ")[1].split(";")[0]
                     cookie_found = True
-            if cookie_found == True:
+            if cookie_found == True and rnonce == snonce:
                 # Cookie found, login successful
                 self.is_logged_in = True
                 print "Login successful"
+            elif coodie_found == True:
+                # Server returned bad nonce
+                self.user_name = ""
+                self.password = ""
+                print "Login unsuccessful, received bad nonce"
             else:
                 # No cookie, login unsuccessful
                 self.user_name = ""
                 self.password = ""
-                print "Login unsuccessful, did not receive cookie from server"        except urllib2.HTTPError as e:
+                print "Login unsuccessful, did not receive cookie from server"        
+        except urllib2.HTTPError as e:
             # HTTP error happened, the response status is not 200 (OK)
             print "Unable to log in, server returned HTTP", e.code, e.msg
             self.user_name = ""
@@ -108,7 +117,7 @@ class ChatManager:
             # Other kinds of errors related to the network
             print "Unable to log in, reason:", e.message
             self.user_name = ""
-j            self.password = ""
+            self.password = ""
             self.is_logged_in = False
 
     def create_conversation(self):
