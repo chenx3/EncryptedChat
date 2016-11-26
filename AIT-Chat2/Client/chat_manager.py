@@ -81,9 +81,9 @@ class ChatManager:
             req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/login", data=user_data)
             r = urllib2.urlopen(req)
             
-            cipher_r = PKCS1_OAEP.new(self.manager.private_key)
+            cipher_r = PKCS1_OAEP.new(self.private_key)
             rnonce_encrypted_64 = json.loads(r.read())
-            rnonce_encrypted = base64.decodestring(nonce_encrypted_64)
+            rnonce_encrypted = base64.decodestring(rnonce_encrypted_64)
             rnonce = cipher_r.decrypt(rnonce_encrypted)
             
             headers = r.info().headers
