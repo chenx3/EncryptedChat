@@ -91,7 +91,6 @@ class MainHandler(tornado.web.RequestHandler):
         print "Main function, redirecting to login..."
         self.redirect("/login")
 
-
 class LoginHandler(JsonHandler):
     def data_received(self, chunk):
         pass
@@ -113,11 +112,27 @@ class LoginHandler(JsonHandler):
         encrypted_password_raw = base64.decodestring(encrypted_password)
         password = cipher.decrypt(encrypted_password_raw)
         
+        encrypted_nonce_64 = self.request.arguments['nonce']
+        encrypted_nonce = base64.decodestring(encrypted_nonce_64)
+        nonce = cipher.decrypt(encrypted_nonce)
+        
         current_user = cm.login_user(user_name, password)
 
         if current_user:
             if not self.get_secure_cookie(Constants.COOKIE_NAME):
                 self.set_secure_cookie(Constants.COOKIE_NAME, user_name)
+            
+            kfile = open(user_name.lower() + '-pubkey.pem')
+            keystr = kfile.read()
+            kfile.close()
+            user_pubkey = RSA.importKey(keystr)
+            reply_cipher = PKCS1_OAEP.new(user_pubkey)
+            
+            encrypted_reply_nonce = reply_cipher.encrypt(nonce)
+            encrypted_reply_nonce_64 = base64.encodestring(encrypted_reply_nonce)
+            self.response = encrypted_reply_nonce_64
+            self.write_json()
+            
             print "User " + user_name + " successfully logged in!"
             self.set_status(200)
             self.finish()
