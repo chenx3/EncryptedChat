@@ -97,7 +97,7 @@ class ChatManager:
                 # Cookie found, login successful
                 self.is_logged_in = True
                 print "Login successful"
-            elif coodie_found == True:
+            elif cookie_found == True:
                 # Server returned bad nonce
                 self.user_name = ""
                 self.password = ""
