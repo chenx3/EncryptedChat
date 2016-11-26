@@ -15,6 +15,9 @@ class ChatManager:
     def set_nonce(self, length=8):
         self.nonce = ''.join([str(random.randint(0, 9)) for i in range(length)])
     
+    def getNonce(self):
+        return self.nonce
+    
     def login_user(self, user_name, password):
         """
         Logs in a user.
