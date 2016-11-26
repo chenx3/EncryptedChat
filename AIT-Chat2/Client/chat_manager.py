@@ -16,7 +16,7 @@ from encrypted_conversation import EncryptedConversation
 import urllib2
 import json
 from message import Message, MessageEncoder
-rfrom time import sleep
+from time import sleep
 
 from menu import menu
 
