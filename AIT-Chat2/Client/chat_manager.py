@@ -16,7 +16,7 @@ from encrypted_conversation import EncryptedConversation
 import urllib2
 import json
 from message import Message, MessageEncoder
-from time import sleep
+rfrom time import sleep
 
 from menu import menu
 
@@ -26,7 +26,7 @@ import base64
 
 state = INIT  # initial state for the application
 has_requested_messages = False  # history of the next conversation will need to be downloaded and printed
-
+_
 
 class ChatManager:
     '''
@@ -62,7 +62,8 @@ class ChatManager:
         
         pubkey = RSA.importKey("server_pub_key.pem")
         cipher = PKCS1_OAEP.new(pubkey)
-        encrypted_password = cipher.encrypt(self.password)
+        encrypted_password_raw = cipher.encrypt(self.password)
+        encrypted_password = base64.encodestring(encrypted_password_raw)
         
         print "Logging in..."
         # create JSON document of user credentials
