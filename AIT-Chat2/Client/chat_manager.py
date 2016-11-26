@@ -66,7 +66,7 @@ class ChatManager:
         encrypted_password_64 = base64.encodestring(encrypted_password)
         
         snonce = ''.join([str(random.randint(0, 9)) for i in range(8)])
-        snonce_encrypted = cipher.encrypt(snonce)
+        snonce_encrypted = cipher_s.encrypt(snonce)
         snonce_encrypted_64 = base64.encodestring(snonce_encrypted)
         
         print "Logging in..."
