@@ -181,8 +181,8 @@ class GetNonceHandler(JsonHandler):
         encrypted_reply_clnonce = reply_cipher.encrypt(nonce)
         encrypted_reply_clnonce_64 = base64.encodestring(encrypted_reply_nonce)
         
-        self.response = [encrypted_reply_clnonce_64, encrypted_reply_cmnonce]
-        self.write_json()
+        two_nonces = {"clnonce": encrypted_reply_clnonce_64, "cmnonce": encrypted_reply_cmnonce_64}
+        self.write_json(json.dumps(two_nonces))
 
 class UsersHandler(JsonHandler):
     def data_received(self, chunk):
