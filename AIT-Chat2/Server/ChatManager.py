@@ -2,6 +2,7 @@ import copy
 from RegisteredUsers import RegisteredUsers
 from Conversation import Conversation
 import base64
+from Crypto.Random import random
 
 class ChatManager:
     def __init__(self):
@@ -14,6 +15,10 @@ class ChatManager:
 
     def set_nonce(self, length=8):
         self.nonce = ''.join([str(random.randint(0, 9)) for i in range(length)])
+        print "Regenerating Nonce"
+    
+    def getNonce(self):
+        return self.nonce
     
     def login_user(self, user_name, password):
         """
